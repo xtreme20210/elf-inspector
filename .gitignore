@@ -1,0 +1,5 @@
+*.o
+elfinspect
+.vscode/
+*.core
+core
