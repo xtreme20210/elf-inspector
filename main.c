@@ -13,7 +13,35 @@ struct Field {
     int printType;
 };
 
-void printLoop(struct Cases arr[], size_t size, uint32_t value, const char *printDefault, struct Field valarr[], size_t valarrSize) {
+static const struct Cases emachine[] = {
+    {EM_386, "Intel x86"},
+    {EM_ARM, "ARM 32 bit"},
+    {EM_AARCH64, "ARM 64 bit"},
+    {EM_X86_64, "AMD 64"}
+};
+
+static const struct Cases etype[] = {
+    {ET_REL, "object"},
+    {ET_EXEC, "executable"},
+    {ET_DYN, "shared object / PIE"},
+    {ET_CORE, "core dump"}
+};
+
+static const struct Cases ptype[] = {
+    {PT_NULL, "unused entry"},
+    {PT_LOAD, "loaded into memory"},
+    {PT_DYNAMIC, "dynamic linking info"},
+    {PT_INTERP, "program interpreter"},
+    {PT_NOTE, "note"},
+    {PT_PHDR, "header table"},
+    {PT_TLS, "thread local storage"},
+    {PT_GNU_EH_FRAME, "gnu exception handling"},
+    {PT_GNU_STACK, "gnu stack"},
+    {PT_GNU_RELRO, "made ro after relocation"},
+    {PT_GNU_PROPERTY, "gnu exec properties"}
+};
+
+void printLoop(const struct Cases arr[], size_t size, uint32_t value, const char *printDefault, struct Field valarr[], size_t valarrSize) {
     int count = 0;
     for (int i=0; i < size; i++) {
         if (arr[i].value == value) {
@@ -41,7 +69,7 @@ void printLoop(struct Cases arr[], size_t size, uint32_t value, const char *prin
 int inspect64(FILE *file, int endian) {
     Elf64_Ehdr header;
     if (endian != 1) {
-        fprintf(stderr, "Wrong endianness\n z ");
+        fprintf(stderr, "Wrong endianness\n");
         return 1;
     }
 
@@ -61,13 +89,6 @@ int inspect64(FILE *file, int endian) {
         DECIMAL = 2
     };
 
-    struct Cases emachine[] = {
-        {EM_386, "Intel x86"},
-        {EM_ARM, "ARM 32 bit"},
-        {EM_AARCH64, "ARM 64 bit"},
-        {EM_X86_64, "AMD 64"}
-    };
-
     struct Field extraPrints[] = {
         {"e_entry", header.e_entry, HEX},
         {"e_phoff", header.e_phoff, HEX},
@@ -82,14 +103,8 @@ int inspect64(FILE *file, int endian) {
 
     int extraPrintsSize = sizeof(extraPrints) / sizeof(extraPrints[0]);
 
-    struct Cases etype[] = {
-        {ET_REL, "object"},
-        {ET_EXEC, "executable"},
-        {ET_DYN, "shared object"},
-        {ET_CORE, "core dump"}
-    };
-
     size_t etypeSize = sizeof(etype) / sizeof(etype[0]);
+    printf("ELF header: \n");
     printLoop(etype, etypeSize, header.e_type, "unknown type", extraPrints, extraPrintsSize);
 
     if (header.e_phnum > 0) {
@@ -104,25 +119,11 @@ int inspect64(FILE *file, int endian) {
         }
 
 
-            for (int i = 0; i < header.e_phnum; i++) {
+        for (int i = 0; i < header.e_phnum; i++) {
             if (fread(&segments, sizeof(segments), 1, file) != 1) {
                 fprintf(stderr, "error reading segments\n");
                 return 1;
             }
-
-            struct Cases ptype[] = {
-                {PT_NULL, "unused entry"},
-                {PT_LOAD, "loaded into memory"},
-                {PT_DYNAMIC, "dynamic linking info"},
-                {PT_INTERP, "program interpreter"},
-                {PT_NOTE, "note"},
-                {PT_PHDR, "header table"},
-                {PT_TLS, "thread local storage"},
-                {PT_GNU_EH_FRAME, "gnu exception handling"},
-                {PT_GNU_STACK, "gnu stack"},
-                {PT_GNU_RELRO, "made ro after relocation"},
-                {PT_GNU_PROPERTY, "gnu exec properties"}
-            };
 
             struct Field segPrints[] = {
                 {"p_offset", segments.p_offset, HEX},
@@ -190,14 +191,6 @@ int main (int argc, char *argv[]) {
     } else if (binary[4] == 2) {
         printf("\n64 bit\n");
         bit = 64;
-    } else {
-        fprintf(stderr, "Invalid ELF file type\n");
-        return 1;
-    }
-
-    if (bit != 32 && bit != 64) {
-        fprintf(stderr, "Invalid bits\n");
-        return 1;
     }
     
     if (binary[5] == 1) {
@@ -209,10 +202,6 @@ int main (int argc, char *argv[]) {
     } else {
         fprintf(stderr, "Invalid endianness\n");
         return 1;
-    }
-
-    if (endian != 1 && endian != 2) {
-        fprintf(stderr, "Invalid endianness\n");
     }
 
     if (bit == 32) {
